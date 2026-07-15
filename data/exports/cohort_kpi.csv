@@ -1,0 +1,5 @@
+TenureGroup,Customers,Churned,ChurnRate,AvgMonthlyCharge,AvgCLV,RevenueRisk,ChurnRatePct
+Established,1594,325,0.2,65.93,2391.86,27462.5,20.0
+Growing,1024,294,0.29,61.36,1127.04,23081.65,29.0
+Loyal,2239,213,0.1,73.95,4683.92,19632.45,10.0
+New,2175,1037,0.48,56.17,276.36,68954.25,48.0
