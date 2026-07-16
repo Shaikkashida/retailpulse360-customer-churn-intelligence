@@ -232,7 +232,7 @@ The following analyses were completed:
 
 ## Executive Dashboard
 
-![Dashboard Overview](assets/screenshots/Dashboard_Overview.png)
+![Dashboard Overview](assets\screenshots\RetailPulse360_Dashboard.png)
 
 ---
 
