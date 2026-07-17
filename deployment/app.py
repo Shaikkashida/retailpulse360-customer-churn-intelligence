@@ -3,60 +3,19 @@ import pandas as pd
 import plotly.express as px
 from pathlib import Path
 
-# ==================================================
+# =====================================================
 # PAGE CONFIG
-# ==================================================
+# =====================================================
 
 st.set_page_config(
     page_title="RetailPulse 360",
     page_icon="📊",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
-
-# ==================================================
-# DARK THEME CSS
-# ==================================================
-
-st.markdown("""
-<style>
-
-.stApp{
-    background-color:#0E1117;
-}
-
-section[data-testid="stSidebar"]{
-    background-color:#161B22;
-}
-
-h1,h2,h3,h4,h5,h6{
-    color:white !important;
-}
-
-p,div,label,span{
-    color:#E6EDF3;
-}
-
-[data-testid="metric-container"]{
-    background:linear-gradient(135deg,#1E293B,#111827);
-    border:1px solid #334155;
-    padding:18px;
-    border-radius:15px;
-}
-
-[data-testid="metric-container"] label{
-    color:#94A3B8 !important;
-}
-
-footer{
-    visibility:hidden;
-}
-
-</style>
-""", unsafe_allow_html=True)
-
-# ==================================================
-# PATHS
-# ==================================================
+# =====================================================
+# LOAD DATA
+# =====================================================
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -66,17 +25,6 @@ DATA_PATH = (
     / "processed"
     / "cleaned_churn_base.csv"
 )
-
-BANNER_PATH = (
-    BASE_DIR
-    / "assets"
-    / "screenshots"
-    / "banner.svg"
-)
-
-# ==================================================
-# LOAD DATA
-# ==================================================
 
 @st.cache_data
 def load_data():
@@ -88,76 +36,51 @@ def load_data():
         errors="coerce"
     )
 
-    df["RevenueAtRisk"] = df.apply(
-        lambda x:
-        x["MonthlyCharges"]
-        if x["Churn"] == "Yes"
-        else 0,
-        axis=1
-    )
+    if "RevenueAtRisk" not in df.columns:
+        df["RevenueAtRisk"] = df.apply(
+            lambda x:
+            x["MonthlyCharges"]
+            if x["Churn"]=="Yes"
+            else 0,
+            axis=1
+        )
 
     return df
 
 df = load_data()
 
-# ==================================================
-# BANNER
-# ==================================================
+# =====================================================
+# SIDEBAR
+# =====================================================
 
-if BANNER_PATH.exists():
-    st.image(str(BANNER_PATH), use_container_width=True)
-
-# ==================================================
-# HEADER
-# ==================================================
-
-st.markdown("""
-<div style="
-background:linear-gradient(135deg,#2563EB,#0F172A);
-padding:30px;
-border-radius:20px;
-margin-bottom:20px;
-">
-
-<h1 style="color:white;">
-RetailPulse 360
-</h1>
-
-<h3 style="color:#CBD5E1;">
-Customer Churn Intelligence Platform
-</h3>
-
-<p style="color:#E2E8F0;">
-End-to-End Data Analytics Project using
-Excel, SQL, Python, Statistics,
-Power BI, Streamlit, BigQuery and Looker Studio
-</p>
-
-</div>
-""", unsafe_allow_html=True)
-
-# ==================================================
-# SIDEBAR FILTERS
-# ==================================================
-
-st.sidebar.title("Filters")
+st.sidebar.title("🎛 Executive Filters")
 
 contract_filter = st.sidebar.multiselect(
     "Contract",
-    df["Contract"].unique(),
-    default=df["Contract"].unique()
+    sorted(df["Contract"].unique()),
+    default=sorted(df["Contract"].unique())
 )
 
 internet_filter = st.sidebar.multiselect(
     "Internet Service",
-    df["InternetService"].unique(),
-    default=df["InternetService"].unique()
+    sorted(df["InternetService"].unique()),
+    default=sorted(df["InternetService"].unique())
 )
 
 payment_filter = st.sidebar.multiselect(
     "Payment Method",
-    df["PaymentMethod"].unique(),
-    default=df["PaymentMethod"].unique()
+    sorted(df["PaymentMethod"].unique()),
+    default=sorted(df["PaymentMethod"].unique())
+)
+
+tenure_filter = st.sidebar.slider(
+    "Tenure (Months)",
+    int(df["tenure"].min()),
+    int(df["tenure"].max()),
+    (
+        int(df["tenure"].min()),
+        int(df["tenure"].max())
+    )
 )
 
 filtered_df = df[
@@ -166,161 +89,224 @@ filtered_df = df[
     (df["InternetService"].isin(internet_filter))
     &
     (df["PaymentMethod"].isin(payment_filter))
+    &
+    (
+        df["tenure"].between(
+            tenure_filter[0],
+            tenure_filter[1]
+        )
+    )
 ]
 
-# ==================================================
-# BUSINESS PROBLEM
-# ==================================================
+# =====================================================
+# HERO HEADER
+# =====================================================
+st.markdown("""
+<div style="
+background: linear-gradient(135deg, #2563EB, #1E3A8A);
+padding: 30px;
+border-radius: 18px;
+margin-bottom: 25px;
+box-shadow: 0 8px 20px rgba(0,0,0,0.35);
+">
 
-st.subheader("Business Problem")
+<h1 style="color:white; margin-bottom:8px;">
+📊 RetailPulse 360
+</h1>
 
-st.write("""
-Customer churn reduces recurring revenue,
-increases acquisition costs and impacts profitability.
+<h3 style="color:#E2E8F0; margin-top:0;">
+Executive Customer Churn Intelligence Dashboard
+</h3>
 
-The objective of this project is to identify:
+<p style="color:#F8FAFC; font-size:20px;">
+End-to-End Customer Churn Analytics Project
+</p>
 
-• High-risk customer segments
+<p style="color:#CBD5E1; font-size:15px;">
+Excel • SQL • Python • Power BI • Streamlit • BigQuery
+</p>
 
-• Revenue at risk
+</div>
+""", unsafe_allow_html=True)
 
-• Churn drivers
 
-• Retention opportunities
-
-• Business actions to reduce churn
-""")
-
-# ==================================================
-# KPIs
-# ==================================================
+# =====================================================
+# EXECUTIVE KPI CALCULATIONS
+# =====================================================
 
 total_customers = len(filtered_df)
 
-churned_customers = (
-    filtered_df["Churn"] == "Yes"
-).sum()
+churned = (filtered_df["Churn"]=="Yes").sum()
 
-retained_customers = (
-    total_customers -
-    churned_customers
+retained = total_customers-churned
+
+churn_rate = round((churned/total_customers)*100,1)
+
+retention_rate = round(100-churn_rate,1)
+
+revenue_risk = filtered_df["RevenueAtRisk"].sum()
+
+avg_clv = filtered_df["CLV"].mean()
+
+high_risk = len(
+
+filtered_df[
+
+filtered_df["Contract"]
+
+=="Month-to-month"
+
+]
+
 )
 
-churn_rate = (
-    churned_customers /
-    total_customers
-) * 100
+# =====================================================
+# KPI TITLE
+# =====================================================
 
-retention_rate = 100 - churn_rate
+st.markdown("## 📈 Executive KPI Dashboard")
 
-revenue_at_risk = (
-    filtered_df["RevenueAtRisk"]
-    .sum()
-)
-
-avg_clv = (
-    filtered_df["CLV"]
-    .mean()
-)
-
-high_risk_customers = len(
-    filtered_df[
-        filtered_df["Contract"]
-        ==
-        "Month-to-month"
-    ]
-)
-
-st.subheader("Executive KPIs")
+# =====================================================
+# KPI ROW 1
+# =====================================================
 
 c1,c2,c3 = st.columns(3)
 
 with c1:
+
     st.metric(
-        "Total Customers",
+
+        "👥 Total Customers",
+
         f"{total_customers:,}"
+
     )
 
 with c2:
+
     st.metric(
-        "Churn Rate",
-        f"{churn_rate:.1f}%"
+
+        "📉 Churn Rate",
+
+        f"{churn_rate}%"
+
     )
 
 with c3:
+
     st.metric(
-        "Retention Rate",
-        f"{retention_rate:.1f}%"
+
+        "🛡 Retention Rate",
+
+        f"{retention_rate}%"
+
     )
+
+# =====================================================
+# KPI ROW 2
+# =====================================================
 
 c4,c5,c6 = st.columns(3)
 
 with c4:
+
     st.metric(
-        "Revenue At Risk",
-        f"${revenue_at_risk:,.0f}"
+
+        "💰 Revenue At Risk",
+
+        f"${revenue_risk:,.0f}"
+
     )
 
 with c5:
+
     st.metric(
-        "Average CLV",
+
+        "⭐ Average CLV",
+
         f"${avg_clv:,.0f}"
+
     )
 
 with c6:
+
     st.metric(
-        "High Risk Customers",
-        f"{high_risk_customers:,}"
+
+        "⚠ High-Risk Customers",
+
+        f"{high_risk:,}"
+
     )
 
-# ==================================================
-# CHARTS
-# ==================================================
+st.divider()
 
-st.subheader("Business Analysis")
+# =====================================================
+# EXECUTIVE BUSINESS ANALYTICS
+# =====================================================
 
-col1,col2,col3 = st.columns(3)
+st.markdown("## 📊 Executive Business Analytics")
 
-# Contract Churn
+chart1, chart2, chart3 = st.columns(3)
+
+# =====================================================
+# CHART 1
+# CHURN RATE BY CONTRACT
+# =====================================================
 
 contract_df = (
     filtered_df
-    .groupby("Contract")
-    ["Churn_Flag"]
+    .groupby("Contract")["Churn_Flag"]
     .mean()
     .reset_index()
 )
 
 contract_df["ChurnRate"] = (
     contract_df["Churn_Flag"] * 100
-)
+).round(1)
 
 fig1 = px.bar(
     contract_df,
     x="Contract",
     y="ChurnRate",
-    color="ChurnRate",
-    text=contract_df["ChurnRate"].round(1)
+    text="ChurnRate",
+    color="Contract",
+    color_discrete_sequence=[
+        "#2563EB",
+        "#10B981",
+        "#F59E0B"
+    ]
+)
+
+fig1.update_traces(
+    textposition="outside"
 )
 
 fig1.update_layout(
+    title="Churn Rate by Contract",
     template="plotly_dark",
-    paper_bgcolor="#0E1117",
-    plot_bgcolor="#0E1117"
+    paper_bgcolor="#0B1220",
+    plot_bgcolor="#0B1220",
+    showlegend=False,
+    height=420,
+    margin=dict(l=10,r=10,t=50,b=10),
+    xaxis_title="",
+    yaxis_title="Churn %"
 )
 
-with col1:
+with chart1:
     st.plotly_chart(
         fig1,
-        use_container_width=True
+        width="stretch"
     )
 
-# Revenue Risk
+# =====================================================
+# CHART 2
+# REVENUE AT RISK
+# =====================================================
 
 payment_df = (
     filtered_df
-    .groupby("PaymentMethod")
-    ["RevenueAtRisk"]
+    .groupby("PaymentMethod")["RevenueAtRisk"]
     .sum()
     .reset_index()
 )
@@ -329,146 +315,299 @@ fig2 = px.bar(
     payment_df,
     x="PaymentMethod",
     y="RevenueAtRisk",
-    color="RevenueAtRisk"
+    color="RevenueAtRisk",
+    color_continuous_scale="Blues",
+    text_auto=".2s"
 )
 
 fig2.update_layout(
+    title="Revenue At Risk",
     template="plotly_dark",
-    paper_bgcolor="#0E1117",
-    plot_bgcolor="#0E1117"
+    paper_bgcolor="#0B1220",
+    plot_bgcolor="#0B1220",
+    height=420,
+    coloraxis_showscale=False,
+    margin=dict(l=10,r=10,t=50,b=10),
+    xaxis_title="",
+    yaxis_title="$"
 )
 
-with col2:
+with chart2:
     st.plotly_chart(
         fig2,
-        use_container_width=True
+        width="stretch"
     )
 
-# Scatter
+# =====================================================
+# CHART 3
+# CUSTOMER SEGMENTATION
+# =====================================================
 
 fig3 = px.scatter(
     filtered_df,
     x="tenure",
     y="MonthlyCharges",
     color="Churn",
-    opacity=0.6
+    size="MonthlyCharges",
+    hover_data=[
+        "Contract",
+        "InternetService"
+    ],
+    color_discrete_map={
+        "Yes":"#EF4444",
+        "No":"#10B981"
+    }
 )
 
 fig3.update_layout(
+    title="Customer Segmentation",
     template="plotly_dark",
-    paper_bgcolor="#0E1117",
-    plot_bgcolor="#0E1117"
+    paper_bgcolor="#0B1220",
+    plot_bgcolor="#0B1220",
+    height=420,
+    margin=dict(l=10,r=10,t=50,b=10)
 )
 
-with col3:
+with chart3:
     st.plotly_chart(
         fig3,
-        use_container_width=True
+        width="stretch"
     )
 
-# ==================================================
-# STORYTELLING INSIGHTS
-# ==================================================
+st.divider()
 
-st.subheader("Data Storytelling")
+# =====================================================
+# EXECUTIVE INSIGHTS
+# =====================================================
 
-st.success("""
-WHAT HAPPENED?
+st.markdown("## 💡 Executive Insights")
 
-Month-to-Month customers have the highest churn rate.
+insight1, insight2 = st.columns(2)
 
-WHY DID IT HAPPEN?
+with insight1:
 
-Flexible contracts make it easier for customers to switch providers.
+    st.success("""
 
-WHO CAUSED IT?
+### Key Findings
 
-New customers and month-to-month subscribers contribute most churn cases.
+• Month-to-Month contracts have the highest churn.
 
-BUSINESS IMPACT
+• Customers with shorter tenure are more likely to leave.
 
-Recurring revenue loss and lower customer lifetime value.
+• Electronic Check users contribute the highest revenue risk.
 
-WHAT SHOULD BE DONE NEXT?
+• Long-term contracts significantly improve retention.
 
-Convert customers into annual contracts using loyalty discounts and retention campaigns.
 """)
 
-# ==================================================
-# RECOMMENDATIONS
-# ==================================================
+with insight2:
 
-st.subheader("Business Recommendations")
+    st.info("""
 
-st.markdown("""
-### Priority 1
+### Recommended Actions
 
-Convert Month-to-Month Customers To Annual Contracts
+✅ Convert Month-to-Month customers to annual plans.
 
-### Priority 2
+✅ Introduce AutoPay incentives.
 
-Offer AutoPay Incentives
+✅ Target customers within their first 12 months.
 
-### Priority 3
+✅ Bundle premium services to increase customer loyalty.
 
-Target New Customers Within First 12 Months
-
-### Priority 4
-
-Bundle Security And Support Services
-
-### Expected Outcome
-
-Reduce churn by 10-15% and protect recurring revenue.
 """)
 
-# ==================================================
-# TOOLS USED
-# ==================================================
+st.divider()
 
-st.subheader("Project Stack")
+# =====================================================
+# STRATEGIC RECOMMENDATIONS
+# =====================================================
 
-st.markdown("""
-### Data Analytics Tools
+st.markdown("## 🚀 Strategic Business Recommendations")
+
+r1, r2, r3 = st.columns(3)
+
+with r1:
+    st.warning("""
+### 🎯 Priority 1
+
+**Reduce Churn**
+
+• Convert Month-to-Month customers into annual contracts.
+
+• Offer contract renewal discounts.
+
+• Launch personalized retention campaigns.
+""")
+
+with r2:
+    st.info("""
+### 💰 Priority 2
+
+**Protect Revenue**
+
+• Encourage AutoPay adoption.
+
+• Provide loyalty rewards.
+
+• Focus on high-value customers.
+""")
+
+with r3:
+    st.success("""
+### 📈 Priority 3
+
+**Increase Customer Lifetime Value**
+
+• Cross-sell premium services.
+
+• Bundle Internet + Security.
+
+• Improve onboarding during the first year.
+""")
+
+st.divider()
+
+# =====================================================
+# TECHNOLOGY STACK
+# =====================================================
+
+st.markdown("## 🛠 Technology Stack")
+
+t1, t2, t3 = st.columns(3)
+
+with t1:
+
+    st.markdown("""
+### 📊 Analytics
 
 - Excel
 - SQL
 - Python
 - Statistics
-- Power BI
-- Streamlit
-- Google BigQuery
-- Looker Studio
-
-### Analytics Process
-
-1. Data Collection
-2. Data Cleaning
-3. Feature Engineering
-4. Exploratory Data Analysis
-5. SQL KPI Analysis
-6. Statistical Testing
-7. Dashboard Development
-8. Business Recommendations
+- Pandas
 """)
 
-# ==================================================
-# DATA PREVIEW
-# ==================================================
+with t2:
 
-st.subheader("Dataset Preview")
+    st.markdown("""
+### 📈 Visualization
+
+- Power BI
+- Streamlit
+- Plotly
+- HTML Dashboard
+""")
+
+with t3:
+
+    st.markdown("""
+### ☁ Deployment
+
+- GitHub
+- Streamlit Cloud
+- BigQuery
+- Looker Studio
+""")
+
+st.divider()
+
+# =====================================================
+# DATASET PREVIEW
+# =====================================================
+
+st.markdown("## 📂 Dataset Preview")
 
 st.dataframe(
     filtered_df.head(20),
-    use_container_width=True
+    width="stretch",
+    height=350
 )
 
-# ==================================================
+# =====================================================
+# DOWNLOAD DATA
+# =====================================================
+
+csv = filtered_df.to_csv(index=False).encode("utf-8")
+
+st.download_button(
+    label="⬇ Download Filtered Dataset",
+    data=csv,
+    file_name="RetailPulse360_Filtered_Data.csv",
+    mime="text/csv"
+)
+
+st.divider()
+
+# =====================================================
+# PROJECT LINKS
+# =====================================================
+
+st.markdown("## 🔗 Project Links")
+
+c1, c2, c3 = st.columns(3)
+
+with c1:
+
+    st.link_button(
+        "💻 GitHub Repository",
+        "https://github.com/Shaikkashida/retailpulse360-customer-churn-intelligence"
+    )
+
+with c2:
+
+    st.link_button(
+        "🌐 Live Streamlit Dashboard",
+        "https://retailpulse360-customer-churn-intelligence-p4vrhkt5tbevse2gmuj.streamlit.app/"
+    )
+
+with c3:
+
+    st.info("""
+HTML Dashboard
+
+(Add GitHub Pages link after deployment.)
+""")
+
+st.divider()
+
+# =====================================================
+# ABOUT PROJECT
+# =====================================================
+
+st.markdown("## 📖 About RetailPulse 360")
+
+st.write("""
+RetailPulse 360 is an end-to-end Customer Churn Analytics project
+designed to simulate a real business scenario.
+
+The project covers:
+
+- Data Cleaning
+- Feature Engineering
+- Exploratory Data Analysis
+- SQL Business Analysis
+- Statistical Testing
+- Interactive Dashboards
+- Executive KPI Reporting
+- Business Recommendations
+- Cloud Deployment
+""")
+
+st.divider()
+
+# =====================================================
 # FOOTER
-# ==================================================
+# =====================================================
 
-st.markdown("---")
+st.markdown("""
+---
+### 👨‍💻 Created by Shaik Kashida Jabeen
 
-st.caption(
-    "Created by Shaik Kashida Jabeen | Customer Churn Analytics Portfolio Project"
-)
+RetailPulse 360 • Customer Churn Intelligence Platform
+
+**Technology Stack**
+
+Python | SQL | Excel | R | Power BI | Streamlit | BigQuery | Looker Studio
+
+© 2025 RetailPulse 360
+""")
