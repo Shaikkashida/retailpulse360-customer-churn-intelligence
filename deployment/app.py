@@ -562,11 +562,10 @@ with c2:
 
 with c3:
 
-    st.info("""
-HTML Dashboard
-
-(Add GitHub Pages link after deployment.)
-""")
+    st.link_button(
+    "📊 Interactive HTML Dashboard",
+    "https://retailpulse360-dashboard.netlify.app/"
+)
 
 st.divider()
 
